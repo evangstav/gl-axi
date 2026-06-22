@@ -69,6 +69,12 @@ These are non-obvious `glab`/GitLab behaviors the wrapper relies on; preserve th
   multiple segments (GitLab subgroups). Token comes from `git credential fill` for the host
   base URL; `GITLAB_TOKEN` is only a fallback. `glab` reads the host + token from the
   `GITLAB_HOST`/`GITLAB_TOKEN` env vars `glab.ts` injects, so the token never touches argv.
+- **List reads paginate past GitLab's 100-row `per_page` cap.** GitLab silently
+  truncates any `per_page` above 100, so `mr list`/`issue list` `--top N` (default 30,
+  max 1000) is served by `glab.ts`'s `glabApiList`, which pages with
+  `per_page=min(100, remaining)` (and an explicit `page=`) until it has `N` rows or hits a
+  short page. A non-numeric/non-positive `--top` falls back to the default. The single
+  default-budget call still asks for one page.
 - **`mr checks` folds two API calls into one verdict.** Pipeline status from
   `head_pipeline.status` on the MR + `approvals_left`/`approvals_required` from the
   `…/approvals` endpoint → `failing` (pipeline failed/canceled), `pending` (pipeline running

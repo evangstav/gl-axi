@@ -52,7 +52,7 @@ a standalone binary.
 
 | Command | Description |
 | --- | --- |
-| `mr list [--state opened\|merged\|closed\|all] [--author <u>] [--source <b>] [--target <b>] [--top N]` | List merge requests (default state `opened`, top 30) |
+| `mr list [--state opened\|merged\|closed\|all] [--author <u>] [--source <b>] [--target <b>] [--top N]` | List merge requests (default state `opened`, top 30, max 1000) |
 | `mr show <id>` | Show one merge request |
 | `mr create [-s/--source <b>] [-t/--target <b>] [--title <t>] [--description <d>] [--draft] [--remove-source-branch]` | Create an MR (source defaults to the current branch, target to `main`) |
 | `mr merge <id> [--squash] [--remove-source-branch]` | Merge/accept an MR |
@@ -67,7 +67,7 @@ a standalone binary.
 | `issue create --title <t> [--description <d>] [--assignee <u>] [--label <a,b>]` | Create an issue |
 | `issue update <id> [--title] [--description] [--assignee] [--label] [--state opened\|closed]` | Update fields and/or transition state |
 | `issue show <id>` | Show one issue |
-| `issue list [--state opened\|closed\|all] [--assignee <u>] [--author <u>] [--label <a,b>] [--top N]` | List issues |
+| `issue list [--state opened\|closed\|all] [--assignee <u>] [--author <u>] [--label <a,b>] [--top N]` | List issues (default state `opened`, top 30, max 1000) |
 
 ### Setup — `gl-axi setup hooks`
 
