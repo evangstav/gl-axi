@@ -1,0 +1,43 @@
+{
+  "name": "gl-axi",
+  "version": "0.1.0",
+  "description": "AXI-compliant GitLab CLI wrapper — token-efficient TOON output over `glab` (merge requests, reviewers/approvers, issues), with project + token auto-resolution. The GitLab equivalent of gh-axi / ado-axi.",
+  "type": "module",
+  "keywords": [
+    "gitlab",
+    "glab",
+    "cli",
+    "agent",
+    "axi",
+    "toon",
+    "merge-request"
+  ],
+  "bin": {
+    "gl-axi": "./dist/bin/gl-axi.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx bin/gl-axi.ts",
+    "prepack": "npm run build",
+    "test": "npm run build && node --test test/*.test.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@toon-format/toon": "^2.1.0",
+    "axi-sdk-js": "^0.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
+  }
+}

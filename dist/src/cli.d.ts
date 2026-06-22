@@ -1,0 +1,5 @@
+export declare const DESCRIPTION = "Agent-ergonomic wrapper around the GitLab CLI (`glab`). Prefer this over raw `glab` for GitLab merge requests, reviewers/approvers, and issues. TOON output, structured errors, project + token auto-resolution.";
+export declare const TOP_HELP = "usage: gl-axi [command] [args] [flags]\ncommands[3]:\n  mr, issue, setup\ncontext:\n  host + project (namespace/repo) auto-detected from the GitLab git origin; override\n  with GL_REPO=namespace/repo (+ GITLAB_HOST) or -R namespace/repo. Token read from the\n  git credential helper for the host (GITLAB_TOKEN as a fallback).\nflags:\n  -R/--repo <NAMESPACE/REPO>, --help, -v/--version\nexamples:\n  gl-axi mr list\n  gl-axi mr create --title \"Add readiness gate\" --remove-source-branch\n  gl-axi mr checks 42\n  gl-axi mr reviewer add 42 --reviewer alice --required\n  gl-axi issue list --state opened\n  gl-axi issue create --title \"Wire up gate\" --assignee alice\n  gl-axi setup hooks";
+export declare function main(argv?: string[], stdout?: {
+    write: (chunk: string) => unknown;
+}): Promise<void>;
