@@ -34,6 +34,25 @@ test("glab failures surface a structured, actionable error", async () => {
   assert.match(combinedOutput(result), /REPO_NOT_FOUND/);
 });
 
+test("a resolved project with no token points at the credential helper", async () => {
+  // Project resolves via -R, but no token (git credential fake fails, GITLAB_TOKEN cleared).
+  const result = await runCli(["mr", "list", ...R], { GITLAB_TOKEN: "" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(combinedOutput(result), /AUTH_REQUIRED/);
+  assert.match(combinedOutput(result), /credential helper/);
+  // It must NOT mis-blame the repo path when the token is what's missing.
+  assert.doesNotMatch(combinedOutput(result), /No GitLab project/);
+});
+
+test("no project and no token reports the project failure, not the token", async () => {
+  // No -R, fake git has no origin → project can't resolve before the token is checked.
+  const result = await runCli(["mr", "list"], { GITLAB_TOKEN: "" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(combinedOutput(result), /No GitLab project/);
+});
+
 test("unknown top-level commands are rejected", async () => {
   const result = await runCli(["bogus"]);
   assert.notEqual(result.status, 0);

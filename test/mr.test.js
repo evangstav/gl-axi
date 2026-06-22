@@ -36,6 +36,29 @@ test("mr list maps --state/--author/--source/--target/--top into the query", asy
   assert.match(endpoint, /per_page=5/);
 });
 
+test("mr list clamps per_page at GitLab's 100 cap for --top > 100", async () => {
+  // --top 150 must not become per_page=150 (GitLab silently truncates that to 100);
+  // it pages with per_page=100 instead so the count is honest.
+  const result = await runCli(["mr", "list", "--top", "150", ...R]);
+
+  assert.equal(result.status, 0, result.stdout);
+  const [list] = readInvocations(result.glabLogFile);
+  const endpoint = list[list.length - 1];
+  assert.match(endpoint, /per_page=100/);
+  assert.doesNotMatch(endpoint, /per_page=150/);
+  assert.match(endpoint, /page=1/);
+});
+
+test("mr list ignores a non-numeric --top and falls back to the default", async () => {
+  const result = await runCli(["mr", "list", "--top", "--state", ...R]);
+
+  assert.equal(result.status, 0, result.stdout);
+  const [list] = readInvocations(result.glabLogFile);
+  const endpoint = list[list.length - 1];
+  // `--top --state` → --top has no real value, so it stays at the default 30.
+  assert.match(endpoint, /per_page=30/);
+});
+
 test("mr list handles an empty result set with a count and no rows", async () => {
   const result = await runCli(["mr", "list", ...R], { GL_AXI_EMPTY: "1" });
   assert.equal(result.status, 0, result.stdout);

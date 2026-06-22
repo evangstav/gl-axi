@@ -1,8 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { type GitLabContext } from "../context.js";
-import { glabApi, glabExec, encodeProject } from "../glab.js";
+import {
+  type GitLabContext,
+  type ContextResolution,
+  requireContext,
+} from "../context.js";
+import { glabApi, glabApiList, glabExec, encodeProject } from "../glab.js";
 import { AxiError } from "../errors.js";
-import { getFlag, hasFlag, getPositional } from "../args.js";
+import { getFlag, hasFlag, getPositional, getCount } from "../args.js";
 import { renderOutput, renderData, renderHelp, renderCount } from "../render.js";
 import { resolveUserId } from "../identity.js";
 
@@ -13,7 +17,7 @@ flags{create}:
   -s/--source <branch> (default: current branch), -t/--target <branch> (default: main),
   --title <t>, --description <d>, --draft, --remove-source-branch
 flags{list}:
-  --state <opened|merged|closed|all> (default opened), --top <n> (default 30),
+  --state <opened|merged|closed|all> (default opened), --top <n> (default 30, max 1000),
   --author <username>, --source <branch>, --target <branch>
 flags{merge}:
   --squash, --remove-source-branch
@@ -70,10 +74,9 @@ function currentBranch(): string | undefined {
 
 async function listMrs(args: string[], ctx: GitLabContext): Promise<string> {
   const state = getFlag(args, "--state") ?? "opened";
-  const top = getFlag(args, "--top") ?? "30";
+  const top = getCount(args, "--top", 30, 1000);
   const params = new URLSearchParams();
   params.set("state", state);
-  params.set("per_page", top);
   const author = getFlag(args, "--author");
   if (author) params.set("author_username", author);
   const source = getFlag(args, "--source");
@@ -81,11 +84,13 @@ async function listMrs(args: string[], ctx: GitLabContext): Promise<string> {
   const target = getFlag(args, "--target");
   if (target) params.set("target_branch", target);
 
-  const mrs = await glabApi<Record<string, unknown>[]>(
-    `${mrBase(ctx)}?${params.toString()}`,
+  const mrs = await glabApiList<Record<string, unknown>>(
+    mrBase(ctx),
+    params,
     ctx,
+    top,
   );
-  const rows = (mrs ?? []).map((mr) => mrSummary(mr, ctx));
+  const rows = mrs.map((mr) => mrSummary(mr, ctx));
   return renderOutput([
     renderCount("merge_requests", rows.length),
     renderData("merge_requests", rows),
@@ -365,16 +370,11 @@ function requireMrId(args: string[], start = 1): number {
 
 export async function mrCommand(
   args: string[],
-  ctx?: GitLabContext,
+  resolution?: ContextResolution,
 ): Promise<string> {
   const sub = args[0];
   if (sub === "--help" || sub === undefined) return MR_HELP;
-  if (!ctx) {
-    throw new AxiError(
-      "No GitLab context — run inside a repo with a GitLab origin, set GL_REPO=namespace/repo (and GITLAB_HOST), or pass -R",
-      "VALIDATION_ERROR",
-    );
-  }
+  const ctx = requireContext(resolution);
   switch (sub) {
     case "create":
       return createMr(args, ctx);

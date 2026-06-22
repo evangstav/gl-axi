@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { AxiError } from "./errors.js";
 /**
  * Resolve the GitLab host/project and an API token.
  *
@@ -13,17 +14,37 @@ export function resolveContext(flagValue) {
     const origin = readOrigin();
     const resolved = resolveProjectPath(flagValue, origin);
     if (!resolved)
-        return undefined;
+        return { ok: false, reason: "no-project" };
     const { projectPath, source } = resolved;
     const host = process.env["GITLAB_HOST"]?.trim() || origin?.host || "gitlab.com";
     const baseUrl = `https://${host}`;
     const token = readToken(baseUrl);
     if (!token)
-        return undefined;
+        return { ok: false, reason: "no-token", host };
     const segments = projectPath.split("/").filter(Boolean);
     const repo = segments[segments.length - 1];
     const namespace = segments.slice(0, -1).join("/");
-    return { host, baseUrl, projectPath, namespace, repo, token, source };
+    return {
+        ok: true,
+        context: { host, baseUrl, projectPath, namespace, repo, token, source },
+    };
+}
+/**
+ * Narrow a resolution to a usable context, or throw a failure-specific error. A
+ * missing project points the user at the repo path; a missing token points at the
+ * credential helper (the least obvious part of resolution) rather than the repo.
+ */
+export function requireContext(resolution) {
+    if (resolution?.ok)
+        return resolution.context;
+    if (resolution?.reason === "no-token") {
+        throw new AxiError(`No GitLab token for ${resolution.host} — gl-axi reads it from the git credential helper`, "AUTH_REQUIRED", [
+            `Store one for the host: git credential approve (url=https://${resolution.host})`,
+            "Or set GITLAB_TOKEN as a fallback",
+            "Ensure the token has api scope",
+        ]);
+    }
+    throw new AxiError("No GitLab project — run inside a repo with a GitLab origin, set GL_REPO=namespace/repo (and GITLAB_HOST), or pass -R", "VALIDATION_ERROR");
 }
 function resolveProjectPath(flagValue, origin) {
     const flagPath = normalizePath(flagValue);

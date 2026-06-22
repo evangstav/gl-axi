@@ -15,6 +15,22 @@ export interface GitLabContext {
     source: "flag" | "env" | "git";
 }
 /**
+ * Outcome of context resolution. Resolution has two distinct failure modes — an
+ * unresolvable project path vs. a missing token — that need different guidance, so
+ * they are reported separately instead of collapsing into a single `undefined`.
+ */
+export type ContextResolution = {
+    ok: true;
+    context: GitLabContext;
+} | {
+    ok: false;
+    reason: "no-project";
+} | {
+    ok: false;
+    reason: "no-token";
+    host: string;
+};
+/**
  * Resolve the GitLab host/project and an API token.
  *
  * Project path priority: --repo/-R flag (namespace/repo) > GL_REPO env > git origin.
@@ -24,7 +40,13 @@ export interface GitLabContext {
  * → password). This keeps the token out of argv/env files and lets gl-axi run as a
  * standalone binary; `GITLAB_TOKEN` is honored only as a fallback.
  */
-export declare function resolveContext(flagValue?: string): GitLabContext | undefined;
+export declare function resolveContext(flagValue?: string): ContextResolution;
+/**
+ * Narrow a resolution to a usable context, or throw a failure-specific error. A
+ * missing project points the user at the repo path; a missing token points at the
+ * credential helper (the least obvious part of resolution) rather than the repo.
+ */
+export declare function requireContext(resolution: ContextResolution | undefined): GitLabContext;
 interface Origin {
     host: string;
     projectPath: string;

@@ -1,6 +1,7 @@
-import { glabApi, glabExec, encodeProject } from "../glab.js";
+import { requireContext, } from "../context.js";
+import { glabApi, glabApiList, glabExec, encodeProject } from "../glab.js";
 import { AxiError } from "../errors.js";
-import { getFlag, getPositional } from "../args.js";
+import { getFlag, getPositional, getCount } from "../args.js";
 import { renderOutput, renderData, renderHelp, renderCount } from "../render.js";
 export const ISSUE_HELP = `usage: gl-axi issue <subcommand> [flags]
 subcommands[4]:
@@ -10,7 +11,7 @@ flags{create}:
 flags{update}:
   --title, --description, --assignee, --label, --state <opened|closed>
 flags{list}:
-  --state <opened|closed|all> (default opened), --top <n> (default 30),
+  --state <opened|closed|all> (default opened), --top <n> (default 30, max 1000),
   --assignee <username>, --author <username>, --label <a,b>
 examples:
   gl-axi issue create --title "Wire up gate" --assignee alice --label backend
@@ -122,10 +123,9 @@ async function showIssue(args, ctx) {
 }
 async function listIssues(args, ctx) {
     const state = getFlag(args, "--state") ?? "opened";
-    const top = getFlag(args, "--top") ?? "30";
+    const top = getCount(args, "--top", 30, 1000);
     const params = new URLSearchParams();
     params.set("state", state);
-    params.set("per_page", top);
     const assignee = getFlag(args, "--assignee");
     if (assignee)
         params.set("assignee_username", assignee);
@@ -135,8 +135,8 @@ async function listIssues(args, ctx) {
     const label = getFlag(args, "--label");
     if (label)
         params.set("labels", label);
-    const issues = await glabApi(`${issueBase(ctx)}?${params.toString()}`, ctx);
-    const rows = (issues ?? []).map((i) => issueSummary(i, ctx));
+    const issues = await glabApiList(issueBase(ctx), params, ctx, top);
+    const rows = issues.map((i) => issueSummary(i, ctx));
     return renderOutput([
         renderCount("issues", rows.length),
         renderData("issues", rows),
@@ -162,13 +162,11 @@ function requireIssueId(args) {
     }
     return Number(raw);
 }
-export async function issueCommand(args, ctx) {
+export async function issueCommand(args, resolution) {
     const sub = args[0];
     if (sub === "--help" || sub === undefined)
         return ISSUE_HELP;
-    if (!ctx) {
-        throw new AxiError("No GitLab context — run inside a repo with a GitLab origin, set GL_REPO=namespace/repo (and GITLAB_HOST), or pass -R", "VALIDATION_ERROR");
-    }
+    const ctx = requireContext(resolution);
     switch (sub) {
         case "create":
             return createIssue(args, ctx);

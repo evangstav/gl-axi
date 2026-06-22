@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { AxiError } from "./errors.js";
 
 export interface GitLabContext {
   /** GitLab hostname, e.g. gitlab.swpd or gitlab.com */
@@ -18,6 +19,16 @@ export interface GitLabContext {
 }
 
 /**
+ * Outcome of context resolution. Resolution has two distinct failure modes — an
+ * unresolvable project path vs. a missing token — that need different guidance, so
+ * they are reported separately instead of collapsing into a single `undefined`.
+ */
+export type ContextResolution =
+  | { ok: true; context: GitLabContext }
+  | { ok: false; reason: "no-project" }
+  | { ok: false; reason: "no-token"; host: string };
+
+/**
  * Resolve the GitLab host/project and an API token.
  *
  * Project path priority: --repo/-R flag (namespace/repo) > GL_REPO env > git origin.
@@ -27,11 +38,11 @@ export interface GitLabContext {
  * → password). This keeps the token out of argv/env files and lets gl-axi run as a
  * standalone binary; `GITLAB_TOKEN` is honored only as a fallback.
  */
-export function resolveContext(flagValue?: string): GitLabContext | undefined {
+export function resolveContext(flagValue?: string): ContextResolution {
   const origin = readOrigin();
 
   const resolved = resolveProjectPath(flagValue, origin);
-  if (!resolved) return undefined;
+  if (!resolved) return { ok: false, reason: "no-project" };
   const { projectPath, source } = resolved;
 
   const host =
@@ -39,13 +50,42 @@ export function resolveContext(flagValue?: string): GitLabContext | undefined {
   const baseUrl = `https://${host}`;
 
   const token = readToken(baseUrl);
-  if (!token) return undefined;
+  if (!token) return { ok: false, reason: "no-token", host };
 
   const segments = projectPath.split("/").filter(Boolean);
   const repo = segments[segments.length - 1];
   const namespace = segments.slice(0, -1).join("/");
 
-  return { host, baseUrl, projectPath, namespace, repo, token, source };
+  return {
+    ok: true,
+    context: { host, baseUrl, projectPath, namespace, repo, token, source },
+  };
+}
+
+/**
+ * Narrow a resolution to a usable context, or throw a failure-specific error. A
+ * missing project points the user at the repo path; a missing token points at the
+ * credential helper (the least obvious part of resolution) rather than the repo.
+ */
+export function requireContext(
+  resolution: ContextResolution | undefined,
+): GitLabContext {
+  if (resolution?.ok) return resolution.context;
+  if (resolution?.reason === "no-token") {
+    throw new AxiError(
+      `No GitLab token for ${resolution.host} — gl-axi reads it from the git credential helper`,
+      "AUTH_REQUIRED",
+      [
+        `Store one for the host: git credential approve (url=https://${resolution.host})`,
+        "Or set GITLAB_TOKEN as a fallback",
+        "Ensure the token has api scope",
+      ],
+    );
+  }
+  throw new AxiError(
+    "No GitLab project — run inside a repo with a GitLab origin, set GL_REPO=namespace/repo (and GITLAB_HOST), or pass -R",
+    "VALIDATION_ERROR",
+  );
 }
 
 interface Origin {

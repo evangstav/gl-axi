@@ -24,5 +24,14 @@ export declare function glabApi<T = unknown>(endpoint: string, ctx: GitLabContex
  * the resulting id/URL is parsed from stdout by the caller.
  */
 export declare function glabExec(args: string[], ctx: GitLabContext): Promise<string>;
+/** GitLab caps `per_page` at 100; larger requests are silently truncated to it. */
+export declare const GITLAB_MAX_PER_PAGE = 100;
+/**
+ * Fetch up to `limit` rows from a list endpoint, paginating past GitLab's 100-row
+ * `per_page` cap so a `--top 250` honestly returns 250 (when they exist) instead of
+ * silently stopping at 100. `path` is the endpoint without `per_page`/`page`; extra
+ * query params belong in `params`.
+ */
+export declare function glabApiList<T = unknown>(path: string, params: URLSearchParams, ctx: GitLabContext, limit: number): Promise<T[]>;
 /** URL-encode a full project path for use as the `:id` in a REST endpoint. */
 export declare function encodeProject(projectPath: string): string;

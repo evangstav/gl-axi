@@ -75,6 +75,28 @@ export async function glabExec(args, ctx) {
     // builds mix them, so hand back both for URL/id extraction.
     return `${result.stdout}\n${result.stderr}`;
 }
+/** GitLab caps `per_page` at 100; larger requests are silently truncated to it. */
+export const GITLAB_MAX_PER_PAGE = 100;
+/**
+ * Fetch up to `limit` rows from a list endpoint, paginating past GitLab's 100-row
+ * `per_page` cap so a `--top 250` honestly returns 250 (when they exist) instead of
+ * silently stopping at 100. `path` is the endpoint without `per_page`/`page`; extra
+ * query params belong in `params`.
+ */
+export async function glabApiList(path, params, ctx, limit) {
+    const rows = [];
+    for (let page = 1; rows.length < limit; page++) {
+        const pageSize = Math.min(GITLAB_MAX_PER_PAGE, limit - rows.length);
+        params.set("per_page", String(pageSize));
+        params.set("page", String(page));
+        const batch = (await glabApi(`${path}?${params.toString()}`, ctx)) ?? [];
+        rows.push(...batch);
+        // A short page (fewer rows than requested) means the endpoint is exhausted.
+        if (batch.length < pageSize)
+            break;
+    }
+    return rows.slice(0, limit);
+}
 /** URL-encode a full project path for use as the `:id` in a REST endpoint. */
 export function encodeProject(projectPath) {
     return encodeURIComponent(projectPath);

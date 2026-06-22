@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runAxiCli } from "axi-sdk-js";
-import { resolveContext, type GitLabContext } from "./context.js";
+import { resolveContext, type ContextResolution } from "./context.js";
 import { mrCommand, MR_HELP } from "./commands/mr.js";
 import { issueCommand, ISSUE_HELP } from "./commands/issue.js";
 import { setupCommand, SETUP_HELP } from "./commands/setup.js";
@@ -36,7 +36,7 @@ const COMMAND_HELP: Record<string, string> = {
   setup: SETUP_HELP,
 };
 
-type CommandFn = (args: string[], ctx?: GitLabContext) => Promise<string>;
+type CommandFn = (args: string[], ctx?: ContextResolution) => Promise<string>;
 
 const COMMANDS: Record<string, CommandFn> = {
   mr: withContext("mr", mrCommand),
@@ -49,7 +49,7 @@ export async function main(
   stdout?: { write: (chunk: string) => unknown },
 ): Promise<void> {
   const normalizedArgv = normalizeLeadingRepoFlag(argv ?? process.argv.slice(2));
-  await runAxiCli<GitLabContext | undefined>({
+  await runAxiCli<ContextResolution>({
     argv: normalizedArgv,
     stdout,
     description: DESCRIPTION,

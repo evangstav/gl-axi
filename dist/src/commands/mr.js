@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { glabApi, glabExec, encodeProject } from "../glab.js";
+import { requireContext, } from "../context.js";
+import { glabApi, glabApiList, glabExec, encodeProject } from "../glab.js";
 import { AxiError } from "../errors.js";
-import { getFlag, hasFlag, getPositional } from "../args.js";
+import { getFlag, hasFlag, getPositional, getCount } from "../args.js";
 import { renderOutput, renderData, renderHelp, renderCount } from "../render.js";
 import { resolveUserId } from "../identity.js";
 export const MR_HELP = `usage: gl-axi mr <subcommand> [flags]
@@ -11,7 +12,7 @@ flags{create}:
   -s/--source <branch> (default: current branch), -t/--target <branch> (default: main),
   --title <t>, --description <d>, --draft, --remove-source-branch
 flags{list}:
-  --state <opened|merged|closed|all> (default opened), --top <n> (default 30),
+  --state <opened|merged|closed|all> (default opened), --top <n> (default 30, max 1000),
   --author <username>, --source <branch>, --target <branch>
 flags{merge}:
   --squash, --remove-source-branch
@@ -62,10 +63,9 @@ function currentBranch() {
 }
 async function listMrs(args, ctx) {
     const state = getFlag(args, "--state") ?? "opened";
-    const top = getFlag(args, "--top") ?? "30";
+    const top = getCount(args, "--top", 30, 1000);
     const params = new URLSearchParams();
     params.set("state", state);
-    params.set("per_page", top);
     const author = getFlag(args, "--author");
     if (author)
         params.set("author_username", author);
@@ -75,8 +75,8 @@ async function listMrs(args, ctx) {
     const target = getFlag(args, "--target");
     if (target)
         params.set("target_branch", target);
-    const mrs = await glabApi(`${mrBase(ctx)}?${params.toString()}`, ctx);
-    const rows = (mrs ?? []).map((mr) => mrSummary(mr, ctx));
+    const mrs = await glabApiList(mrBase(ctx), params, ctx, top);
+    const rows = mrs.map((mr) => mrSummary(mr, ctx));
     return renderOutput([
         renderCount("merge_requests", rows.length),
         renderData("merge_requests", rows),
@@ -288,13 +288,11 @@ function requireMrId(args, start = 1) {
     }
     return Number(raw);
 }
-export async function mrCommand(args, ctx) {
+export async function mrCommand(args, resolution) {
     const sub = args[0];
     if (sub === "--help" || sub === undefined)
         return MR_HELP;
-    if (!ctx) {
-        throw new AxiError("No GitLab context — run inside a repo with a GitLab origin, set GL_REPO=namespace/repo (and GITLAB_HOST), or pass -R", "VALIDATION_ERROR");
-    }
+    const ctx = requireContext(resolution);
     switch (sub) {
         case "create":
             return createMr(args, ctx);
