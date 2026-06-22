@@ -54,6 +54,12 @@ case "$*" in
     else
       printf '[{"id":501,"username":"alice","name":"Alice Dev"}]\\n'
     fi ;;
+  *"api"*"users/"*)
+    if [ "$GL_AXI_USER_NOTFOUND" = "1" ]; then
+      printf '{}\\n'
+    else
+      printf '{"id":777,"username":"carol","name":"Carol Dev"}\\n'
+    fi ;;
   *"api"*"/merge_requests/"*)
     printf '{"iid":42,"title":"Demo MR","state":"opened","source_branch":"feature/demo","target_branch":"main","draft":false,"author":{"username":"dev"},"web_url":"https://gitlab.example/grp/repo/-/merge_requests/42","head_pipeline":{"status":"success"},"reviewers":[{"username":"dev2","name":"Dev Two"}]}\\n' ;;
   *"api"*"/merge_requests"*)

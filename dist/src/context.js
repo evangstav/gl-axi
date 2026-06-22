@@ -81,20 +81,31 @@ function readOrigin() {
 }
 /**
  * Parse a GitLab remote URL into host + full project path. Handles the common forms:
- *   https://{host}/{group}/.../{repo}.git
- *   https://{user}@{host}/{group}/.../{repo}.git
+ *   https://{host}[:port]/{group}/.../{repo}.git
+ *   https://{user}@{host}[:port]/{group}/.../{repo}.git
  *   ssh://git@{host}[:port]/{group}/.../{repo}.git
  *   git@{host}:{group}/.../{repo}.git
  * The project path may have multiple segments (GitLab subgroups).
+ *
+ * An explicit HTTPS port is part of the API host and is preserved (a self-managed
+ * instance may serve the API on e.g. :8443). An SSH port is the SSH port, not the
+ * HTTPS API port, so it is dropped — the API is reached over HTTPS on the host.
  */
 export function parseRemoteUrl(url) {
     const trimmed = url.trim();
-    // https:// or ssh:// forms.
-    const urlForm = trimmed.match(/^(?:https?|ssh):\/\/(?:[^@/]+@)?([^/:]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/);
-    if (urlForm) {
-        const projectPath = stripPath(urlForm[2]);
+    // http(s):// — keep an explicit port; it is the API port.
+    const httpForm = trimmed.match(/^https?:\/\/(?:[^@/]+@)?([^/]+)\/(.+?)(?:\.git)?\/?$/);
+    if (httpForm) {
+        const projectPath = stripPath(httpForm[2]);
         if (projectPath)
-            return { host: urlForm[1], projectPath };
+            return { host: httpForm[1], projectPath };
+    }
+    // ssh:// — strip the SSH port; the HTTPS API lives on the bare host.
+    const sshForm = trimmed.match(/^ssh:\/\/(?:[^@/]+@)?([^/:]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/);
+    if (sshForm) {
+        const projectPath = stripPath(sshForm[2]);
+        if (projectPath)
+            return { host: sshForm[1], projectPath };
     }
     // scp-like form: git@host:group/repo.git
     const scpForm = trimmed.match(/^(?:[^@]+@)?([^/:]+):(.+?)(?:\.git)?\/?$/);

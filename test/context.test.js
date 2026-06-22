@@ -23,9 +23,19 @@ test("parses an scp-style ssh origin", () => {
   });
 });
 
-test("parses an ssh:// origin with a port", () => {
+test("drops the SSH port (it is not the HTTPS API port)", () => {
   const r = parseRemoteUrl("ssh://git@gitlab.swpd:2222/group/repo.git");
   assert.deepEqual(r, { host: "gitlab.swpd", projectPath: "group/repo" });
+});
+
+test("preserves an explicit HTTPS port (self-managed instance on :8443)", () => {
+  const r = parseRemoteUrl("https://gitlab.example:8443/group/repo.git");
+  assert.deepEqual(r, { host: "gitlab.example:8443", projectPath: "group/repo" });
+});
+
+test("preserves an HTTPS port with an embedded user", () => {
+  const r = parseRemoteUrl("https://oauth2@gitlab.example:8443/group/repo.git");
+  assert.deepEqual(r, { host: "gitlab.example:8443", projectPath: "group/repo" });
 });
 
 test("preserves multi-segment subgroup paths", () => {

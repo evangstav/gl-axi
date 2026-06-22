@@ -191,15 +191,45 @@ test("reviewer add --required resolves the user id and creates an approval rule"
   assert.match(result.stdout, /approval_rule: true/);
 });
 
-test("reviewer add --required with a numeric id skips the lookup", async () => {
+test("reviewer add with a numeric id resolves the username for the glab update", async () => {
+  // `glab mr update --reviewer` takes usernames only, so a numeric id must be
+  // resolved to its username (users/:id) before the porcelain call — otherwise the
+  // advertised numeric-id form would send `+777` and glab would reject it.
+  const result = await runCli(["mr", "reviewer", "add", "42", "--reviewer", "777", ...R]);
+
+  assert.equal(result.status, 0, result.stdout);
+  const invs = readInvocations(result.glabLogFile);
+  assert.equal(invs.length, 2, JSON.stringify(invs));
+  assert.match(invs[0][invs[0].length - 1], /users\/777/);
+  assert.deepEqual(invs[1].slice(0, 3), ["mr", "update", "42"]);
+  assert.equal(argValue(invs[1], "--reviewer"), "+carol");
+});
+
+test("reviewer add --required with a numeric id looks up the username but not via users?username", async () => {
   const result = await runCli(["mr", "reviewer", "add", "42", "--reviewer", "777", "--required", ...R]);
 
   assert.equal(result.status, 0, result.stdout);
   const invs = readInvocations(result.glabLogFile);
-  // update + approval_rules only — no users lookup.
-  assert.equal(invs.length, 2, JSON.stringify(invs));
+  // 1) users/:id → username, 2) mr update +carol, 3) approval_rules with the id directly.
+  assert.equal(invs.length, 3, JSON.stringify(invs));
+  assert.match(invs[0][invs[0].length - 1], /users\/777/);
+  assert.deepEqual(invs[1].slice(0, 3), ["mr", "update", "42"]);
+  assert.equal(argValue(invs[1], "--reviewer"), "+carol");
   assert.equal(invs.some((i) => i.some((a) => a.includes("users?username="))), false);
-  assert.equal(invs[1].some((a) => a === "user_ids[]=777"), true, JSON.stringify(invs[1]));
+  assert.equal(invs[2].some((a) => a === "user_ids[]=777"), true, JSON.stringify(invs[2]));
+});
+
+test("reviewer add surfaces a numeric id that matches no user", async () => {
+  const result = await runCli(
+    ["mr", "reviewer", "add", "42", "--reviewer", "999", ...R],
+    { GL_AXI_USER_NOTFOUND: "1" },
+  );
+
+  assert.equal(result.status, 2, result.stdout);
+  assert.match(result.stdout, /Could not resolve user id.*999/);
+  // It never reached the porcelain update, since the username couldn't be recovered.
+  const invs = readInvocations(result.glabLogFile);
+  assert.equal(invs.some((i) => i[0] === "mr" && i[1] === "update"), false);
 });
 
 test("reviewer add --required surfaces an unresolvable username", async () => {

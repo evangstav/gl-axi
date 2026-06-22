@@ -4,7 +4,7 @@ import { glabApi, glabApiList, glabExec, encodeProject } from "../glab.js";
 import { AxiError } from "../errors.js";
 import { getFlag, hasFlag, getPositional, getCount } from "../args.js";
 import { renderOutput, renderData, renderHelp, renderCount } from "../render.js";
-import { resolveUserId } from "../identity.js";
+import { resolveUserId, resolveUsername } from "../identity.js";
 export const MR_HELP = `usage: gl-axi mr <subcommand> [flags]
 subcommands[6]:
   create, show <id>, list, merge <id>, checks <id>, reviewer
@@ -218,7 +218,13 @@ async function addReviewer(args, ctx) {
         throw new AxiError("--reviewer is required (username or numeric user id)", "VALIDATION_ERROR");
     }
     const required = hasFlag(args, "--required");
-    await glabExec(["mr", "update", String(id), "-R", ctx.projectPath, "--reviewer", `+${reviewer}`], ctx);
+    // `glab mr update --reviewer` takes usernames only, but `--reviewer` also accepts
+    // a numeric user id — recover the username first so the numeric form actually works.
+    const username = await resolveUsername(reviewer, ctx);
+    if (!username) {
+        throw new AxiError(`Could not resolve user id "${reviewer}" to a username`, "VALIDATION_ERROR", ["Pass the reviewer's username instead of a numeric id"]);
+    }
+    await glabExec(["mr", "update", String(id), "-R", ctx.projectPath, "--reviewer", `+${username}`], ctx);
     let ruleCreated = false;
     if (required) {
         const userId = await resolveUserId(reviewer, ctx);

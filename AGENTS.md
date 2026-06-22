@@ -69,6 +69,9 @@ These are non-obvious `glab`/GitLab behaviors the wrapper relies on; preserve th
   multiple segments (GitLab subgroups). Token comes from `git credential fill` for the host
   base URL; `GITLAB_TOKEN` is only a fallback. `glab` reads the host + token from the
   `GITLAB_HOST`/`GITLAB_TOKEN` env vars `glab.ts` injects, so the token never touches argv.
+  An explicit **HTTPS** port in the origin is part of the API host and is kept
+  (`gitlab.example:8443`); an **SSH** port is the SSH port, not the HTTPS API port, so
+  `parseRemoteUrl` drops it.
 - **List reads paginate past GitLab's 100-row `per_page` cap.** GitLab silently
   truncates any `per_page` above 100, so `mr list`/`issue list` `--top N` (default 30,
   max 1000) is served by `glab.ts`'s `glabApiList`, which pages with
@@ -80,10 +83,12 @@ These are non-obvious `glab`/GitLab behaviors the wrapper relies on; preserve th
   `…/approvals` endpoint → `failing` (pipeline failed/canceled), `pending` (pipeline running
   or approvals outstanding), or `passing`.
 - **`--required` reviewer is an approval rule, not a reviewer field.** A plain reviewer is
-  set with `glab mr update --reviewer +<who>` (the `+` adds without replacing; GitLab takes
-  the username directly). `--required` additionally resolves the username to a numeric id
-  via `GET /users?username=` (a numeric input is used directly) and POSTs an MR-level
-  approval rule (`…/merge_requests/<iid>/approval_rules`, `approvals_required=1`,
+  set with `glab mr update --reviewer +<who>`, which takes a **username only**. `--reviewer`
+  also accepts a numeric user id, so `identity.ts`'s `resolveUsername` first turns a numeric
+  id into its username (`GET /users/:id`) before the porcelain call (a username passes
+  through untouched, no API call). `--required` additionally resolves the reviewer to a
+  numeric id via `GET /users?username=` (a numeric input is used directly) and POSTs an
+  MR-level approval rule (`…/merge_requests/<iid>/approval_rules`, `approvals_required=1`,
   `user_ids[]=<id>`).
 - **Issue state is a transition, not a field.** `glab issue update` has no `--state`;
   `--state closed`/`opened` routes to `glab issue close`/`reopen`.

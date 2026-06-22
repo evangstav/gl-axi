@@ -53,11 +53,15 @@ interface Origin {
 }
 /**
  * Parse a GitLab remote URL into host + full project path. Handles the common forms:
- *   https://{host}/{group}/.../{repo}.git
- *   https://{user}@{host}/{group}/.../{repo}.git
+ *   https://{host}[:port]/{group}/.../{repo}.git
+ *   https://{user}@{host}[:port]/{group}/.../{repo}.git
  *   ssh://git@{host}[:port]/{group}/.../{repo}.git
  *   git@{host}:{group}/.../{repo}.git
  * The project path may have multiple segments (GitLab subgroups).
+ *
+ * An explicit HTTPS port is part of the API host and is preserved (a self-managed
+ * instance may serve the API on e.g. :8443). An SSH port is the SSH port, not the
+ * HTTPS API port, so it is dropped — the API is reached over HTTPS on the host.
  */
 export declare function parseRemoteUrl(url: string): Origin | undefined;
 export {};
