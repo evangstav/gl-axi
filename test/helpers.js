@@ -67,7 +67,7 @@ case "$*" in
       printf '[{"iid":42,"title":"Demo MR","state":"opened","source_branch":"feature/demo","target_branch":"main","draft":false,"author":{"username":"dev"}}]\\n'
     fi ;;
   *"api"*"/issues/"*)
-    printf '{"iid":17,"title":"Demo Issue","state":"opened","author":{"username":"dev"},"assignees":[{"username":"alice"}],"labels":["backend"],"web_url":"https://gitlab.example/grp/repo/-/issues/17"}\\n' ;;
+    printf '{"iid":17,"title":"Demo Issue","state":"opened","description":"The full issue body.","author":{"username":"dev"},"assignees":[{"username":"alice"}],"labels":["backend"],"web_url":"https://gitlab.example/grp/repo/-/issues/17"}\\n' ;;
   *"api"*"/issues"*)
     if [ "$GL_AXI_EMPTY" = "1" ]; then printf '[]\\n'; else
       printf '[{"iid":17,"title":"Demo Issue","state":"opened","author":{"username":"dev"},"assignees":[],"labels":[]}]\\n'
