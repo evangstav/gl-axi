@@ -108,6 +108,13 @@ test("issue show projects id/title/state/assignees/labels", async () => {
   assert.match(result.stdout, /state: opened/);
 });
 
+test("issue show includes the full description body", async () => {
+  const result = await runCli(["issue", "show", "17", ...R]);
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.match(result.stdout, /description: The full issue body\./);
+});
+
 // --- list ------------------------------------------------------------------
 
 test("issue list builds an api query from --state/--assignee/--author/--label", async () => {
@@ -125,6 +132,8 @@ test("issue list builds an api query from --state/--assignee/--author/--label", 
   assert.match(endpoint, /labels=backend/);
   assert.match(endpoint, /per_page=7/);
   assert.match(result.stdout, /issues: 1/);
+  // list stays a summary — the body belongs only to the detail (show) view.
+  assert.doesNotMatch(result.stdout, /description:/);
 });
 
 test("issue list handles an empty result set", async () => {

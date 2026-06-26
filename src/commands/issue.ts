@@ -145,13 +145,28 @@ async function updateIssue(
   ]);
 }
 
+/**
+ * The detail (`show`) projection adds the full Markdown description body to the
+ * shared summary. The body belongs only here — `issue list` stays a summary.
+ * GitLab's single-issue GET returns `description` (null when empty).
+ */
+function issueDetail(
+  issue: Record<string, unknown>,
+  ctx: GitLabContext,
+): Record<string, unknown> {
+  return {
+    ...issueSummary(issue, ctx),
+    description: (issue["description"] as string | null | undefined) ?? null,
+  };
+}
+
 async function showIssue(args: string[], ctx: GitLabContext): Promise<string> {
   const id = requireIssueId(args);
   const issue = await glabApi<Record<string, unknown>>(
     `${issueBase(ctx)}/${id}`,
     ctx,
   );
-  return renderOutput([renderData("issue", issueSummary(issue, ctx))]);
+  return renderOutput([renderData("issue", issueDetail(issue, ctx))]);
 }
 
 async function listIssues(

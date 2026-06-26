@@ -116,10 +116,21 @@ async function updateIssue(args, ctx) {
         renderHelp([`Inspect: gl-axi issue show ${id}`]),
     ]);
 }
+/**
+ * The detail (`show`) projection adds the full Markdown description body to the
+ * shared summary. The body belongs only here — `issue list` stays a summary.
+ * GitLab's single-issue GET returns `description` (null when empty).
+ */
+function issueDetail(issue, ctx) {
+    return {
+        ...issueSummary(issue, ctx),
+        description: issue["description"] ?? null,
+    };
+}
 async function showIssue(args, ctx) {
     const id = requireIssueId(args);
     const issue = await glabApi(`${issueBase(ctx)}/${id}`, ctx);
-    return renderOutput([renderData("issue", issueSummary(issue, ctx))]);
+    return renderOutput([renderData("issue", issueDetail(issue, ctx))]);
 }
 async function listIssues(args, ctx) {
     const state = getFlag(args, "--state") ?? "opened";
