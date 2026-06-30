@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "glaxi",
+  "project_id": "1b90456d-17d5-4976-885d-e18487b690a4"
+}
